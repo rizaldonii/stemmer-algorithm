@@ -125,7 +125,7 @@ for filename in os.listdir(input_folder):
 print(f"\nStemming dengan Porter Stemmer selesai untuk {processed_count}/{file_count} file.")
 
 # --- Evaluasi MWC ---
-from collections import Counter
+from collections import Counter, defaultdict
 
 print("\nMemulai evaluasi Mean Word Conflation (MWC)...")
 
