@@ -83,7 +83,7 @@ def detect_encoding(file_path):
         return result['encoding'] or 'utf-8'
 
 # Proses folder input dengan penanganan encoding yang lebih baik
-def process_opinions(input_folder="BIND", output_folder="hasil_stemming"):
+def process_opinions(input_folder="BIND preprocessed", output_folder="hasil_stemming"):
     os.makedirs(output_folder, exist_ok=True)
     txt_files = [f for f in os.listdir(input_folder) if f.endswith(".txt")][:30]
 

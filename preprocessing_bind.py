@@ -51,7 +51,7 @@ def preprocess_text(text):
     # Menghapus whitespace di awal dan akhir
     return text.strip()
 
-def preprocess_bind_folder(folder_path="BIND", backup=True):
+def preprocess_bind_folder(folder_path="BIND_original", backup=True):
     """
     Preprocess semua file txt di folder BIND dan simpan kembali ke file yang sama.
     Jika backup=True, maka file asli akan disimpan dengan tambahan .original
