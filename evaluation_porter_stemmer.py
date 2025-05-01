@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 
-def load_gold_standard(gold_folder="BIND"):
+def load_gold_standard(gold_folder="english texts"):
     gold_data = {}
     for filename in os.listdir(gold_folder):
         if filename.endswith(".txt"):
@@ -10,7 +10,7 @@ def load_gold_standard(gold_folder="BIND"):
                 gold_data[filename] = content
     return gold_data
 
-def load_stemmed_results(result_folder="hasil_stemming"):
+def load_stemmed_results(result_folder="english stemmed output"):
     stemmed_data = {}
     for filename in os.listdir(result_folder):
         if filename.endswith(".txt"):
@@ -72,7 +72,7 @@ def evaluate_stemming_performance(gold_folder, result_folder):
         'Error_Rate': (understemming + overstemming) / total_tokens
     }
 
-def generate_error_report(gold_folder, result_folder, output_file="error_report_ecs.txt"):
+def generate_error_report(gold_folder, result_folder, output_file="error_report_porter.txt"):
     gold_standard = load_gold_standard(gold_folder)
     stemmed_results = load_stemmed_results(result_folder)
     
@@ -115,8 +115,8 @@ def generate_error_report(gold_folder, result_folder, output_file="error_report_
 
 
 if __name__ == "__main__":
-    gold_folder = "BIND"  # Folder berisi file teks dengan stem benar
-    result_folder = "hasil_stemming"  # Folder output stemming
+    gold_folder = "english texts"  # Folder berisi file teks dengan stem benar
+    result_folder = "english stemmed output"  # Folder output stemming
     
     results = evaluate_stemming_performance(gold_folder, result_folder)
     
@@ -131,4 +131,4 @@ if __name__ == "__main__":
     
     # Generate detailed error report
     generate_error_report(gold_folder, result_folder)
-    print("\nError report generated: error_report_ecs.txt")
+    print("\nError report generated: error_report_porter.txt")
