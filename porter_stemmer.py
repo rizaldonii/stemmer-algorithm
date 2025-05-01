@@ -6,10 +6,6 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
 
-# Pastikan resource NLTK tersedia
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
-
 # Inisialisasi stemmer dan stopwords
 stemmer = PorterStemmer()
 stop_words = set(stopwords.words('english'))
@@ -123,73 +119,3 @@ for filename in os.listdir(input_folder):
             print(f"[{file_count}/{len([f for f in os.listdir(input_folder) if f.endswith('.txt')])}] Gagal memproses {filename}: {str(e)}")
 
 print(f"\nStemming dengan Porter Stemmer selesai untuk {processed_count}/{file_count} file.")
-
-# --- Evaluasi MWC ---
-from collections import Counter, defaultdict
-
-print("\nMemulai evaluasi Mean Word Conflation (MWC)...")
-
-all_words = []
-all_stemmed = []
-
-# Kumpulkan semua kata dari file mentah dan hasil stemming
-for filename in os.listdir(input_folder):
-    if filename.endswith(".txt"):
-        try:
-            # Deteksi encoding
-            encoding = detect_encoding(os.path.join(input_folder, filename))
-            
-            with open(os.path.join(input_folder, filename), 'r', encoding=encoding, errors='replace') as file:
-                text = file.read()
-                # Gunakan fungsi preprocessing yang sama
-                text = preprocess_text(text)
-                tokens = word_tokenize(text)
-                filtered = [word for word in tokens if word not in stop_words]
-
-                all_words.extend(filtered)
-                stemmed = [porter_stem(w) for w in filtered]
-                all_stemmed.extend(stemmed)
-        except Exception as e:
-            print(f"Gagal mengevaluasi {filename}: {str(e)}")
-
-# Hitung MWC
-total_words = len(all_words)
-unique_stems = len(set(all_stemmed))
-MWC = total_words / unique_stems if unique_stems != 0 else 0
-
-print("\nHASIL EVALUASI PORTER STEMMER:")
-print("="*50)
-print(f"Total kata: {total_words}")
-print(f"Unique stems: {unique_stems}")
-print(f"Mean Word Conflation (MWC): {MWC:.2f}")
-
-# Hitung distribusi stem
-stem_counts = Counter(all_stemmed)
-top_stems = stem_counts.most_common(10)
-
-print("\nTOP 10 STEM:")
-print("="*50)
-for stem, count in top_stems:
-    print(f"{stem}: {count} occurrences")
-
-# Evaluasi tambahan: contoh group kata
-print("\nCONTOH GROUP KATA DENGAN STEM YANG SAMA:")
-print("="*50)
-
-# Pilih beberapa stem populer dan tampilkan kata aslinya
-stem_to_words = defaultdict(list)
-for word, stem in zip(all_words, all_stemmed):
-    if word != stem:  # Hanya kata yang berubah ketika di-stem
-        stem_to_words[stem].append(word)
-
-# Tampilkan 5 grup stem terbanyak
-counter = 0
-for stem, count in top_stems:
-    if stem in stem_to_words and len(stem_to_words[stem]) > 1:
-        print(f"Stem '{stem}' ({count} occurrences):")
-        # Tampilkan maksimal 7 kata asli yang menjadi stem ini (unik)
-        unique_words = list(set(stem_to_words[stem]))[:7]
-        print(f"  Original words: {', '.join(unique_words)}")
-        counter += 1
-        if counter >= 5:
-            break
