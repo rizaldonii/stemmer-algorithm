@@ -1,7 +1,7 @@
 import os
 from collections import defaultdict
 
-def load_gold_standard(gold_folder="english texts"):
+def load_gold_standard(gold_folder="BING preprocessed"):
     gold_data = {}
     for filename in os.listdir(gold_folder):
         if filename.endswith(".txt"):
@@ -48,28 +48,21 @@ def evaluate_stemming_performance(gold_folder, result_folder):
             consistency_groups[stemmed_word].add(gold_word)
     
     # Hitung metrik evaluasi
-    accuracy = correct / total_tokens
     UI = understemming / total_tokens
     OI = overstemming / total_tokens
     
-    # Hitung MWC (Mean Weighted Consistency)
-    mwc_numerator = 0
-    for stem in consistency_groups:
-        group_size = len(consistency_groups[stem])
-        if group_size > 1:
-            majority = max([list(consistency_groups[stem]).count(w) for w in consistency_groups[stem]])
-            consistency = majority / group_size
-            mwc_numerator += group_size * consistency
+    # Hitung MWC (Mean Word Conflation)
+    conflation_sum = 0
+    for stem, words in consistency_groups.items():
+        conflation_sum += len(words)
     
-    MWC = mwc_numerator / total_tokens if total_tokens > 0 else 0
+    MWC = conflation_sum / len(consistency_groups) if consistency_groups else 0
     
     return {
         'Total_Tokens': total_tokens,
-        'Accuracy': accuracy,
         'Understemming_Index': UI,
         'Overstemming_Index': OI,
-        'Mean_Weighted_Consistency': MWC,
-        'Error_Rate': (understemming + overstemming) / total_tokens
+        'Mean_Word_Conflation': MWC
     }
 
 def generate_error_report(gold_folder, result_folder, output_file="error_report_porter.txt"):
@@ -115,7 +108,7 @@ def generate_error_report(gold_folder, result_folder, output_file="error_report_
 
 
 if __name__ == "__main__":
-    gold_folder = "english texts"  # Folder berisi file teks dengan stem benar
+    gold_folder = "BING preprocessed"  # Folder berisi file teks dengan stem benar
     result_folder = "english stemmed output"  # Folder output stemming
     
     results = evaluate_stemming_performance(gold_folder, result_folder)
@@ -123,11 +116,9 @@ if __name__ == "__main__":
     print("\nEVALUATION RESULTS:")
     print("="*50)
     print(f"Total Tokens Analyzed: {results['Total_Tokens']}")
-    print(f"Accuracy: {results['Accuracy']:.2%}")
     print(f"Understemming Index (UI): {results['Understemming_Index']:.4f}")
     print(f"Overstemming Index (OI): {results['Overstemming_Index']:.4f}")
-    print(f"Mean Weighted Consistency (MWC): {results['Mean_Weighted_Consistency']:.4f}")
-    print(f"Overall Error Rate: {results['Error_Rate']:.2%}")
+    print(f"Mean Word Conflation (MWC): {results['Mean_Word_Conflation']:.4f}")
     
     # Generate detailed error report
     generate_error_report(gold_folder, result_folder)

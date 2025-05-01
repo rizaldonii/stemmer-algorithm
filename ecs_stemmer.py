@@ -1,5 +1,7 @@
 import os
 import chardet
+import re
+import string
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 
 # Inisialisasi stemmer
@@ -18,10 +20,49 @@ def ecs_stem(word):
     stemmed = stemmer.stem(word)
     return stemmed if stemmed in dictionary_set else word
 
-# Proses dokumen teks
+# Preprocessing teks
+def preprocess_text(text):
+    """
+    Melakukan preprocessing pada teks:
+    1. Mengubah ke lowercase
+    2. Menghapus tanda baca
+    3. Menghapus angka
+    4. Menghapus multiple spaces
+    5. Menghapus karakter khusus
+    """
+    # Mengubah ke lowercase
+    text = text.lower()
+    
+    # Menghapus URL
+    text = re.sub(r'https?://\S+|www\.\S+', '', text)
+    
+    # Menghapus tag HTML jika ada
+    text = re.sub(r'<.*?>', '', text)
+    
+    # Menghapus tanda baca
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    
+    # Menghapus angka
+    text = re.sub(r'\d+', '', text)
+    
+    # Menghapus karakter khusus dan non-ASCII
+    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
+    
+    # Menghapus multiple spaces
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Menghapus whitespace di awal dan akhir
+    return text.strip()
+
+# Modifikasi fungsi stem_document untuk menggabungkan preprocessing
 def stem_document(text):
-    words = text.split()
+    # Lakukan preprocessing terlebih dahulu
+    preprocessed_text = preprocess_text(text)
+    # Pisahkan teks menjadi token kata
+    words = preprocessed_text.split()
+    # Lakukan stemming pada setiap kata
     return ' '.join(ecs_stem(word) for word in words)
+
 
 # Deteksi encoding dengan peningkatan
 def detect_encoding(file_path):
