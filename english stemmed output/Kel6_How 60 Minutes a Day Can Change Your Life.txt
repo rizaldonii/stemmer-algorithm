@@ -1,1 +1,9 @@
+Stemmed Words:
 judul minut day chang life rili decemb penuli roy phang link one hour minut second hour day somehow idea carv one hour learn someth new feel monument peopl strang think one hour time take watch episod scroll endlessli social media mindlessli wander internet yet come dedic small sliver day product purpos mani peopl seem question answer noth insidi yet profound think one hour feel option part nonnegoti day like eat sleep work feel like time spend someth rare yet har singl hour everi day impact radic one hour enough learn new skill develop passion build foundat someth lifechang know done
+
+Metrics:
+Metric                        Value
+-----------------------------------
+Understemming Index (UI)       0.03
+Overstemming Index (OI)        0.01
+Mean Word Conflation (MWC)      1.01

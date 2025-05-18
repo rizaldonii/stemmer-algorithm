@@ -1,117 +1,103 @@
 import os
-import chardet
 import re
-import string
+import chardet
+import pandas as pd
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 
-# Inisialisasi stemmer
+input_folder = 'BIND preprocessed'
+output_folder = 'indonesian stemmed output'
+
 factory = StemmerFactory()
 stemmer = factory.create_stemmer()
 
-# Load kamus kata dasar
-def load_dictionary(path="dictionary.txt"):
-    with open(path, "r", encoding="utf-8") as f:
-        return set(word.strip().lower() for word in f)
+# Load stopwords Bahasa Indonesia (bisa diganti dengan daftar stopwords lain jika ada)
+stopwords_path = "stopwords.txt"
+if os.path.exists(stopwords_path):
+    with open(stopwords_path, encoding="utf-8") as f:
+        stop_words = set(w.strip() for w in f)
+else:
+    stop_words = set()
 
-dictionary_set = load_dictionary()
-
-# ECS Stemmer
-def ecs_stem(word):
-    stemmed = stemmer.stem(word)
-    return stemmed if stemmed in dictionary_set else word
-
-# Preprocessing teks
-def preprocess_text(text):
-    """
-    Melakukan preprocessing pada teks:
-    1. Mengubah ke lowercase
-    2. Menghapus tanda baca
-    3. Menghapus angka
-    4. Menghapus multiple spaces
-    5. Menghapus karakter khusus
-    """
-    # Mengubah ke lowercase
-    text = text.lower()
-    
-    # Menghapus URL
-    text = re.sub(r'https?://\S+|www\.\S+', '', text)
-    
-    # Menghapus tag HTML jika ada
-    text = re.sub(r'<.*?>', '', text)
-    
-    # Menghapus tanda baca
-    text = text.translate(str.maketrans('', '', string.punctuation))
-    
-    # Menghapus angka
-    text = re.sub(r'\d+', '', text)
-    
-    # Menghapus karakter khusus dan non-ASCII
-    text = re.sub(r'[^\x00-\x7F]+', ' ', text)
-    
-    # Menghapus multiple spaces
-    text = re.sub(r'\s+', ' ', text)
-    
-    # Menghapus whitespace di awal dan akhir
-    return text.strip()
-
-# Modifikasi fungsi stem_document untuk menggabungkan preprocessing
-def stem_document(text):
-    # Lakukan preprocessing terlebih dahulu
-    preprocessed_text = preprocess_text(text)
-    # Pisahkan teks menjadi token kata
-    words = preprocessed_text.split()
-    # Lakukan stemming pada setiap kata
-    return ' '.join(ecs_stem(word) for word in words)
-
-
-# Deteksi encoding dengan peningkatan
 def detect_encoding(file_path):
     with open(file_path, "rb") as f:
-        raw_data = f.read()
-        # Periksa BOM (Byte Order Mark) untuk UTF-8
-        if raw_data.startswith(b'\xef\xbb\xbf'):
+        raw = f.read()
+        if raw.startswith(b'\xef\xbb\xbf'):
             return 'utf-8-sig'
-        result = chardet.detect(raw_data)
-        # Prioritaskan beberapa encoding yang umum untuk teks Indonesia
-        if result['encoding'] in ['ascii', 'Windows-1252', 'Windows-1254']:
-            # Coba UTF-8 dulu karena chardet kadang salah deteksi UTF-8 sebagai ASCII
-            try:
-                raw_data.decode('utf-8')
-                return 'utf-8'
-            except UnicodeDecodeError:
-                pass
-        return result['encoding'] or 'utf-8'
+        res = chardet.detect(raw)
+        return res['encoding'] or 'utf-8'
 
-# Proses folder input dengan penanganan encoding yang lebih baik
-def process_opinions(input_folder="BIND preprocessed", output_folder="hasil_stemming"):
-    os.makedirs(output_folder, exist_ok=True)
-    txt_files = [f for f in os.listdir(input_folder) if f.endswith(".txt")][:30]
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r'https?://\S+|www\.\S+', '', text)
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'[^a-z\s]', '', text)
+    return re.sub(r'\s+', ' ', text).strip()
 
-    for filename in txt_files:
-        input_path = os.path.join(input_folder, filename)
-        output_path = os.path.join(output_folder, filename)
+metrics = []
+os.makedirs(output_folder, exist_ok=True)
+files = [f for f in os.listdir(input_folder) if f.endswith('.txt')]
 
-        try:
-            encoding = detect_encoding(input_path)
-            if encoding.lower() != "utf-8":
-                print(f"Encoding non-utf8 terdeteksi pada {filename}: {encoding}")
+total_ui = 0
+total_oi = 0
+total_mwc = 0
 
-            # Baca dengan encoding yang terdeteksi
-            with open(input_path, "r", encoding=encoding, errors="replace") as infile:
-                original_text = infile.read()
+for fname in files:
+    path = os.path.join(input_folder, fname)
+    enc = detect_encoding(path)
+    with open(path, encoding=enc, errors='replace') as f:
+        raw = f.read()
+    
+    clean = preprocess(raw)
+    tokens = [w for w in clean.split() if w not in stop_words and len(w)>2]
+    stems = [stemmer.stem(w) for w in tokens]
+    w2s = dict(zip(tokens, stems))
+    
+    stem_map = {}
+    for w,s in w2s.items():
+        stem_map.setdefault(s, set()).add(w)
+    
+    mwc = sum(len(ws) for ws in stem_map.values()) / len(stem_map) if stem_map else 0
+    oi = sum(1 for ws in stem_map.values() if len(ws)>1) / len(stem_map) if stem_map else 0
+    prefix_map = {}
 
-            # Proses stemming
-            stemmed_text = stem_document(original_text)
+    for w,s in w2s.items():
+        p = w[:4] if len(w)>=4 else w
+        prefix_map.setdefault(p, set()).add(s)
+    under = sum(1 for st in prefix_map.values() if len(st)>1)
+    ui = under / len(prefix_map) if prefix_map else 0
+    
+    total_ui += ui
+    total_oi += oi
+    total_mwc += mwc
 
-            # Simpan hasil ke file output dalam UTF-8 dengan BOM
-            with open(output_path, "w", encoding="utf-8-sig") as outfile:
-                outfile.write(stemmed_text)
+    out_text = (
+        "Stemmed Words:\n"
+        + " ".join(stems)
+        + "\n\nMetrics:\n"
+        + f"{'Metric':<25}{'Value':>10}\n"
+        + f"{'-'*35}\n"
+        + f"{'Understemming Index (UI)':<25}{ui:>10.2f}\n"
+        + f"{'Overstemming Index (OI)':<25}{oi:>10.2f}\n"
+        + f"{'Mean Word Conflation (MWC)':<25}{mwc:>10.2f}\n"
+    )
+    with open(os.path.join(output_folder, fname), 'w', encoding='utf-8') as out:
+        out.write(out_text)
+    
+    metrics.append({
+        'Filename': fname,
+        'UI': round(ui,2),
+        'OI': round(oi,2),
+        'MWC': round(mwc,2),
+    })
 
-            print(f"Diproses: {filename} (Encoding asli: {encoding})")
+df = pd.DataFrame(metrics)
+print(df.to_string(index=False, justify='right'))
 
-        except Exception as e:
-            print(f"Gagal memproses {filename}: {str(e)}")
-
-# Eksekusi
-if __name__ == "__main__":
-    process_opinions()
+n_files = len(files)
+if n_files:
+    print("\nAverages:")
+    print(f"{'Average Understemming Index (UI)':<35}: {total_ui/n_files:.2f}")
+    print(f"{'Average Overstemming Index (OI)':<35}: {total_oi/n_files:.2f}")
+    print(f"{'Average Mean Word Conflation (MWC)':<35}: {total_mwc/n_files:.2f}")
+else:
+    print("No files processed.")

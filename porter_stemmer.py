@@ -1,125 +1,101 @@
-import nltk
-nltk.download('stopwords')
-nltk.download('punkt_tab')
 import os
 import re
-import nltk
 import chardet
+import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import PorterStemmer
+import pandas as pd
 
+nltk.download('punkt')
+nltk.download('stopwords')
 
-# Inisialisasi stemmer dan stopwords
+input_folder = 'BING preprocessed'
+output_folder = 'english stemmed output'
 stemmer = PorterStemmer()
 stop_words = set(stopwords.words('english'))
 
-# Folder input dan output
-input_folder = 'BING preprocessed'
-output_folder = 'english stemmed output'
-
-# Deteksi encoding file
 def detect_encoding(file_path):
     with open(file_path, "rb") as f:
-        raw_data = f.read()
-        if raw_data.startswith(b'\xef\xbb\xbf'):
+        raw = f.read()
+        if raw.startswith(b'\xef\xbb\xbf'):
             return 'utf-8-sig'
-        result = chardet.detect(raw_data)
-        if result['encoding'] in ['ascii', 'Windows-1252', 'Windows-1254']:
-            try:
-                raw_data.decode('utf-8')
-                return 'utf-8'
-            except UnicodeDecodeError:
-                pass
-        return result['encoding'] or 'utf-8'
+        res = chardet.detect(raw)
+        return res['encoding'] or 'utf-8'
 
-# Fungsi preprocessing yang lebih komprehensif
-def preprocess_text(text):
-    """
-    Melakukan preprocessing pada teks:
-    1. Mengubah ke lowercase
-    2. Menghapus URL
-    3. Menghapus tag HTML
-    4. Menghapus tanda baca dan karakter khusus
-    5. Menghapus angka
-    6. Menghapus multiple spaces
-    """
-    # Mengubah ke lowercase
+def preprocess(text):
     text = text.lower()
-    
-    # Menghapus URL
     text = re.sub(r'https?://\S+|www\.\S+', '', text)
-    
-    # Menghapus tag HTML jika ada
     text = re.sub(r'<.*?>', '', text)
-    
-    # Menghapus tanda baca dan karakter non-huruf
     text = re.sub(r'[^a-z\s]', '', text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+metrics = []
+os.makedirs(output_folder, exist_ok=True)
+files = [f for f in os.listdir(input_folder) if f.endswith('.txt')]
+
+total_ui = 0
+total_oi = 0
+total_mwc = 0
+
+for fname in files:
+    path = os.path.join(input_folder, fname)
+    enc = detect_encoding(path)
+    with open(path, encoding=enc, errors='replace') as f:
+        raw = f.read()
     
-    # Menghapus multiple spaces
-    text = re.sub(r'\s+', ' ', text)
+    clean = preprocess(raw)
+    tokens = [w for w in word_tokenize(clean) if w not in stop_words and len(w)>2]
+    stems = [stemmer.stem(w) for w in tokens]
+    w2s = dict(zip(tokens, stems))
     
-    # Menghapus whitespace di awal dan akhir
-    return text.strip()
+    stem_map = {}
+    for w,s in w2s.items():
+        stem_map.setdefault(s, set()).add(w)
+    
+    mwc = sum(len(ws) for ws in stem_map.values()) / len(stem_map) if stem_map else 0
+    oi = sum(1 for ws in stem_map.values() if len(ws)>1) / len(stem_map) if stem_map else 0
+    prefix_map = {}
 
-# Fungsi porter stemming untuk satu kata
-def porter_stem(word):
-    """
-    Implementasi Porter Stemmer dengan pengecekan
-    """
-    # NLTK Porter Stemmer
-    return stemmer.stem(word)
+    for w,s in w2s.items():
+        p = w[:4] if len(w)>=4 else w
+        prefix_map.setdefault(p, set()).add(s)
+    under = sum(1 for st in prefix_map.values() if len(st)>1)
+    ui = under / len(prefix_map) if prefix_map else 0
+    
+    total_ui += ui
+    total_oi += oi
+    total_mwc += mwc
 
-# Fungsi preprocessing + stemming
-def preprocess_and_stem(text):
-    # Preprocessing
-    text = preprocess_text(text)
+    # Output file lebih rapi
+    out_text = (
+        "Stemmed Words:\n"
+        + " ".join(stems)
+        + "\n\nMetrics:\n"
+        + f"{'Metric':<25}{'Value':>10}\n"
+        + f"{'-'*35}\n"
+        + f"{'Understemming Index (UI)':<25}{ui:>10.2f}\n"
+        + f"{'Overstemming Index (OI)':<25}{oi:>10.2f}\n"
+        + f"{'Mean Word Conflation (MWC)':<25}{mwc:>10.2f}\n"
+    )
+    with open(os.path.join(output_folder, fname), 'w', encoding='utf-8') as out:
+        out.write(out_text)
+    
+    metrics.append({
+        'Filename': fname,
+        'UI': round(ui,2),
+        'OI': round(oi,2),
+        'MWC': round(mwc,2),
+    })
 
-    # Tokenisasi
-    tokens = word_tokenize(text)
+df = pd.DataFrame(metrics)
+print(df.to_string(index=False, justify='right'))
 
-    # Hilangkan stopwords dan kata pendek (opsional)
-    filtered = [word for word in tokens if word not in stop_words and len(word) > 2]
-
-    # Stemming
-    stemmed = [porter_stem(word) for word in filtered]
-
-    return ' '.join(stemmed)
-
-# Pastikan folder output ada
-if not os.path.exists(output_folder):
-    os.makedirs(output_folder)
-
-print(f"Memproses file dari folder '{input_folder}'...")
-
-# Proses semua file
-file_count = 0
-processed_count = 0
-for filename in os.listdir(input_folder):
-    if filename.endswith(".txt"):
-        file_count += 1
-        input_path = os.path.join(input_folder, filename)
-        
-        try:
-            # Deteksi encoding
-            encoding = detect_encoding(input_path)
-            
-            # Baca file dengan encoding yang sesuai
-            with open(input_path, 'r', encoding=encoding, errors='replace') as file:
-                text = file.read()
-
-            # Preprocess dan stem teks
-            stemmed_text = preprocess_and_stem(text)
-
-            # Simpan hasil
-            output_path = os.path.join(output_folder, filename)
-            with open(output_path, 'w', encoding='utf-8') as output_file:
-                output_file.write(stemmed_text)
-                
-            processed_count += 1
-            print(f"[{file_count}/{len([f for f in os.listdir(input_folder) if f.endswith('.txt')])}] Berhasil memproses: {filename}")
-            
-        except Exception as e:
-            print(f"[{file_count}/{len([f for f in os.listdir(input_folder) if f.endswith('.txt')])}] Gagal memproses {filename}: {str(e)}")
-
-print(f"\nStemming dengan Porter Stemmer selesai untuk {processed_count}/{file_count} file.")
+n_files = len(files)
+if n_files:
+    print("\nAverages:")
+    print(f"{'Average Understemming Index (UI)':<35}: {total_ui/n_files:.2f}")
+    print(f"{'Average Overstemming Index (OI)':<35}: {total_oi/n_files:.2f}")
+    print(f"{'Average Mean Word Conflation (MWC)':<35}: {total_mwc/n_files:.2f}")
+else:
+    print("No files processed.")

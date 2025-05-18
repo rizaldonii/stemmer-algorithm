@@ -1,1 +1,9 @@
+Stemmed Words:
 judul everi doctor face dilemma rili april penuli daniela lama sumber patient son took asid late one even share request brace patient intub covid week lung grow stiffer day son held vigil bedsid paus critiqu nurs health care team like way nurs turn mother demand yet anoth cours antivir treatment covid mother health worsen frustrat escal uneas son pull pill bottl backpack mixtur herb order internet want give supplement mother feed tube along medic look onlin evid would help mother fact list medic deem useless viru time suspect patient would live hospit want heal relationship hospit staff famili told need confer pharmacist realli need time consid respons acquiesc medic reason tri connect angri distrust famili ask depart standard practic medicin sake build trust patient famili question relev ever polit climat amid increas vaccin hesit suspicion medic profession moment patient son felt particularli fraught sort request common fall along spectrum doctor may agre give patient probiot harmless even though evid effect weak case might prescrib unnecessari antibiot might even agre spread time pediatr vaccin famili insist
+
+Metrics:
+Metric                        Value
+-----------------------------------
+Understemming Index (UI)       0.04
+Overstemming Index (OI)        0.08
+Mean Word Conflation (MWC)      1.08

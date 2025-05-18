@@ -18,6 +18,8 @@ stop_words = {
 if not os.path.isdir(folder_path):
     raise FileNotFoundError(f"The folder '{folder_path}' does not exist. Please check the path.")
 
+
+
 for filename in os.listdir(folder_path):
     file_path = os.path.join(folder_path, filename)
     if os.path.isfile(file_path):
